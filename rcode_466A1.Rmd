@@ -1,0 +1,249 @@
+---
+title: "rcode_466A1"
+author: "Zhiya Lou"
+date: "07/02/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(rootSolve)
+library(plotly)
+data <- read.csv("APM466Bonds.csv")
+```
+
+
+```{r}
+bigf <- function(cl){ 
+eachday <- c()
+  for (j in 1:11){
+par = 100
+coup_r = data[j,1]
+coup_p = coup_r*par/2 
+dirty_p = data[j,cl] + (data$last_coup_days[j]/365)*coup_r*par
+
+next_time = data$next_coup_days[j]
+mature = data$mature_days[j]
+
+t= c()
+cf = c()
+while(next_time <=  mature){
+  t= c(t, next_time)
+  cf = c(cf, coup_p)
+  next_time = next_time + 180
+}
+t = c(t, mature)
+cf = c(cf,par)
+
+findytm <- function(r){
+  sum(cf/((1+r)^(t/365))) - dirty_p
+}
+
+yield <- uniroot(findytm,c(0,0.1), extendInt = "yes")$root  #multiroot(findytm(r), c(0,1))
+eachday <- c(eachday, yield)
+  }
+eachday
+
+}
+
+
+```
+
+```{r}
+ytm <- NULL
+day <- c(28
+,181
+,365
+,546
+,758
+,850
+,1124
+,1308
+,1489
+,1673
+,1854) 
+ytm <- (day/365)
+for (i in 9:18){
+  ytm <- cbind(ytm,bigf(i)*100)
+}
+ytm = data.frame(ytm)
+names(ytm)<- c("Years", "20210118","20210119","20210120",	"20210121","20210122","20210125","20210126","20210127","20210128","20210129")
+ytm
+```
+
+```{r}
+fig <- plot_ly(ytm, x = ~Years) 
+fig <- fig %>% add_trace(y = ~Jan.18, name = 'Jan.18',mode = 'lines') 
+fig <- fig %>% add_trace(y = ~Jan.19, name = 'Jan.19',mode = 'lines') 
+fig <- fig %>% add_trace(y = ~Jan.20, name = 'Jan.20',mode = 'lines')
+fig <- fig %>% add_trace(y = ~Jan.21, name = 'Jan.21',mode = 'lines') 
+fig <- fig %>% add_trace(y = ~Jan.22, name = 'Jan.22',mode = 'lines') 
+fig <- fig %>% add_trace(y = ~Jan.25, name = 'Jan.25',mode = 'lines')
+fig <- fig %>% add_trace(y = ~Jan.26, name = 'Jan.26',mode = 'lines')
+fig <- fig %>% add_trace(y = ~Jan.27, name = 'Jan.27',mode = 'lines') 
+fig <- fig %>% add_trace(y = ~Jan.28, name = 'Jan.28',mode = 'lines') 
+fig <- fig %>% add_trace(y = ~Jan.29, name = 'Jan.29',mode = 'lines')
+fig%>% layout(title = "Yield to Maturity Curve",
+         xaxis = list(title = "Time(Years)"),
+         yaxis = list (title = "YTM%"))
+
+```
+
+
+
+b)
+```{r}
+#library(BBmisc)
+spotdata <- cbind(data ,ytm)
+spot <- c(spotdata$`20210121`[1]/100) #for jan 18 
+for (j in 2:11){
+par = 100
+coup_r = spotdata[j,1]
+coup_p = coup_r*par/2 
+dirty_p = data[j,9] + (data$last_coup_days[j]/365)*coup_r*par
+
+next_time = data$next_coup_days[j]
+mature = data$mature_days[j]
+t= c()
+cf = c()
+dis_value = c()
+i = 0
+cf2 = c()
+while(next_time <=  mature){
+  i = i + 1
+  t= c(t, next_time)
+  cf = c(cf, coup_p)
+  if (i <= length(spot)) {
+  dis_value = c(dis_value, cf[i]/(1+spot[i])^t[i]) }
+  if( i > length(spot)){
+  cf2 = c(cf2, cf[i])
+  }
+  next_time = next_time + 180
+}
+cf2 = c(cf2,par)
+t = c(t, mature)[(length(dis_value)+1):length(t)]
+
+findspot <-function(s){
+  sum(cf2/((1+s)^(t/365))) + sum(dis_value)- dirty_p 
+}
+
+spot <- c(spot, uniroot(findspot,c(0,0.1), extendInt = "yes")$root)
+#if (is.error(try(uniroot(findspot,c(0,0.1), extendInt = "yes")$root))) {spot <- c(spot,spot[length(spot)])}else {spot <- c(spot, uniroot(findspot,c(0,0.1),extendInt = "yes")$root)}
+spot
+}
+
+```
+
+
+
+```{r}
+spot_rate <- cbind(spot_rate,spot)
+spotresult <- data.frame(cbind(spot_rate,day/365))
+names(spotresult)<- c( "spot0118","spot0119","spot0120",	"spot0121","spot0122","spot0125","spot0126","spot0127","spot0128","spot0129","Years")
+spotresult
+```
+
+```{r}
+View(spotresult)
+View(spotresult2)
+spotresult2 <- read.csv("spotresult4.csv")
+fig <- plot_ly(spotresult2, x = ~Years) 
+fig <- fig %>% add_trace(y = ~spot0118, name = 'Jan.18',mode = 'marks') 
+fig <- fig %>% add_trace(y = ~spot0119, name = 'Jan.19',mode = 'marks') 
+fig <- fig %>% add_trace(y = ~spot0120, name = 'Jan.20',mode = 'marks')
+fig <- fig %>% add_trace(y = ~spot0121, name = 'Jan.21',mode = 'marks') 
+fig <- fig %>% add_trace(y = ~spot0122, name = 'Jan.22',mode = 'marks') 
+fig <- fig %>% add_trace(y = ~spot0125, name = 'Jan.25',mode = 'marks')
+fig <- fig %>% add_trace(y = ~spot0126, name = 'Jan.26',mode = 'marks')
+fig <- fig %>% add_trace(y = ~spot0127, name = 'Jan.27',mode = 'marks') 
+fig <- fig %>% add_trace(y = ~spot0128, name = 'Jan.28',mode = 'marks') 
+fig <- fig %>% add_trace(y = ~spot0129, name = 'Jan.29',mode = 'marks')
+fig%>% layout(title = "Spot Curve",
+         xaxis = list(title = "Time(Years)"),
+         yaxis = list (title = "Spot rate%"))
+
+```
+
+c)
+```{r}
+spotyear <- spotresult2[c(3,5,7,9,11),]
+forward = NULL
+for (l in 2:11){
+a = c()
+oneone <- (1+spotyear[2,l])^2 / (1+spotyear[1,l])  -1
+onetwo <- ((1+spotyear[3,l])^3 / (1+spotyear[1,l]))^(1/2) -1
+onethree <- ((1+spotyear[4,l])^4 / (1+spotyear[1,l]))^(1/3) -1
+onefour<- ((1+spotyear[5,l])^5 / (1+spotyear[1,l]))^(1/4) -1
+a <- c(oneone, onetwo,onethree,onefour)
+forward = cbind(forward, a)
+}
+forward
+
+```
+
+
+```{r}
+forwardrate <- data.frame(cbind(forward,c(1,2,3,4)))
+names(forwardrate)<- c( "f0118","f0119","f0120",	"f0121","f0122","f0125","f0126","f0127","f0128","f0129","Years")
+forwardrate
+```
+
+```{r}
+fig <- plot_ly(forwardrate, x = ~Years) 
+fig <- fig %>% add_trace(y = ~f0118, name = 'Jan.18',mode = 'marks') 
+fig <- fig %>% add_trace(y = ~f0119, name = 'Jan.19',mode = 'marks') 
+fig <- fig %>% add_trace(y = ~f0120, name = 'Jan.20',mode = 'marks')
+fig <- fig %>% add_trace(y = ~f0121, name = 'Jan.21',mode = 'marks') 
+fig <- fig %>% add_trace(y = ~f0122, name = 'Jan.22',mode = 'marks') 
+fig <- fig %>% add_trace(y = ~f0125, name = 'Jan.25',mode = 'marks')
+fig <- fig %>% add_trace(y = ~f0126, name = 'Jan.26',mode = 'marks')
+fig <- fig %>% add_trace(y = ~f0127, name = 'Jan.27',mode = 'marks') 
+fig <- fig %>% add_trace(y = ~f0128, name = 'Jan.28',mode = 'marks') 
+fig <- fig %>% add_trace(y = ~f0129, name = 'Jan.29',mode = 'marks')
+fig%>% layout(title = "Forward Curve",
+         xaxis = list(title = "Time(Years)"),
+         yaxis = list (title = "Forward rate%"))
+```
+5.
+```{r}
+q5 <- ytm[c(3,5,7,9,11),]
+xijytm <- c()
+for (i  in 1:5) {
+  b<- c() 
+  for (j in 2:10){
+  b <- c(b, log(q5[i,(j+1)]/q5[i,j]))
+  }
+xijytm <- cbind(xijytm,b)
+}
+xijytm
+cov1 <- cov(as.matrix(xijytm))
+```
+
+
+```{r}
+xijfor <- c()
+for (i  in 1:4) {
+  b<- c() 
+  for (j in 1:9){
+  b <- c(b, log(forwardrate[i,(j+1)]/forwardrate[i,j]))
+  }
+xijfor <- cbind(xijfor,b)
+}
+xijfor
+cov2<- cov(as.matrix(xijfor))
+```
+
+6
+```{r}
+eigen(cov2)
+```
+```{r}
+eigen(cov1$values)
+```
+
+
+
+
